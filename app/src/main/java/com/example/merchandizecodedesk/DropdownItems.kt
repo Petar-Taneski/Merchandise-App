@@ -1,41 +1,109 @@
 package com.example.merchandizecodedesk
 
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
 import android.widget.ArrayAdapter
-import android.widget.Button
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.merchandizecodedesk.databinding.DrowpdownMenuBinding
 import kotlinx.coroutines.launch
-import org.w3c.dom.Text
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.*
+import com.itextpdf.*
+
 
 class DropdownItems : AppCompatActivity() {
     private lateinit var binding: DrowpdownMenuBinding
     private lateinit var apiService: RetrofitInterface
+    private var selectedImageUri: Uri? = null
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DrowpdownMenuBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        checkForStoragePermission()
         getListOfItemsFromApi()
+
+        binding.pickImage.setOnClickListener{
+            val pickImg = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+            changeImage.launch(pickImg)
+        }
+
+        binding.btnSave.setOnClickListener{
+            val name = binding.etName.text.toString()
+            val company = binding.etCompany.text.toString()
+            val market = binding.spDrowpdown.selectedItem.toString()
+            PdfGenerator.generatePdf(name, company, market, selectedImageUri, this)
+        }
 
     }
 
 
+    private val changeImage =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                val data = it.data
+                val imgUri = data?.data
+                selectedImageUri = imgUri
 
+                binding.selectedImage.setImageURI(imgUri)
+            }
+        }
+
+    private fun checkForStoragePermission(){
+        var f1: Boolean = false
+        var f2: Boolean = false
+        var permissionsToRequest = mutableListOf<String>()
+        if(ActivityCompat.checkSelfPermission(this,
+            android.Manifest.permission
+            .WRITE_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED
+        )f1 = true
+        if(ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission
+                    .READ_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED
+        )f2 = true
+
+        if(!f1)
+            permissionsToRequest.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+        if(!f2)
+            permissionsToRequest.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+
+        if(permissionsToRequest.isNotEmpty()){
+            ActivityCompat.requestPermissions(this,permissionsToRequest.toTypedArray(),0)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if(requestCode == 0 && grantResults.isNotEmpty()){
+            for (i in grantResults.indices){
+                if (grantResults[i] == PackageManager.PERMISSION_GRANTED)
+                    Log.d("PermissionsRequest", "${permissions[i]} granted.")
+            }
+        }
+    }
     private fun getListOfItemsFromApi() {
 
         apiService = RetrofitInstance.retrofit.create(RetrofitInterface::class.java)
@@ -64,8 +132,6 @@ class DropdownItems : AppCompatActivity() {
                 override fun onFailure(call: Call<List<ToDoItem>>, t: Throwable) {
                     binding.tvSelectItem.text = "No items have been received"
                 }
-
-
             })
         }
     }
