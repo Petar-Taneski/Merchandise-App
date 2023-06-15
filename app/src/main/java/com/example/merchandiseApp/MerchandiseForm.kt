@@ -1,4 +1,4 @@
-package com.example.merchandizecodedesk
+package com.example.merchandiseApp
 
 import android.app.Activity
 import android.content.Intent
@@ -10,28 +10,38 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.merchandizecodedesk.databinding.DrowpdownMenuBinding
+import com.example.merchandiseApp.databinding.MerchandiseFormBinding
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.util.*
 import com.itextpdf.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 
-class DropdownItems : AppCompatActivity() {
-    private lateinit var binding: DrowpdownMenuBinding
+class MerchandiseForm : AppCompatActivity() {
+    private lateinit var binding: MerchandiseFormBinding
     private lateinit var apiService: RetrofitInterface
     private var selectedImageUri: Uri? = null
+    private var generatedPDFUri: Uri? = null
+    val firebaseFileRef = Firebase.storage.reference
+    private var companyName: String = ""
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = DrowpdownMenuBinding.inflate(layoutInflater)
+        binding = MerchandiseFormBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         checkForStoragePermission()
@@ -44,13 +54,34 @@ class DropdownItems : AppCompatActivity() {
 
         binding.btnSave.setOnClickListener{
             val name = binding.etName.text.toString()
-            val company = binding.etCompany.text.toString()
+            companyName = binding.etCompany.text.toString()
             val market = binding.spDrowpdown.selectedItem.toString()
-            PdfGenerator.generatePdf(name, company, market, selectedImageUri, this)
+            PdfGenerator.generatePdf(name, companyName, market, selectedImageUri, this)
+            generatedPDFUri = PdfGenerator.getGeneratedUri()
         }
+        binding.btnUpload.setOnClickListener{
+            val fileName: String? = PdfGenerator.getFileName()
+            uploadFileToFirebase("$fileName")
+        }
+
 
     }
 
+    private fun uploadFileToFirebase(filename: String) = CoroutineScope(Dispatchers.IO).launch {
+        try {
+            generatedPDFUri?.let {
+                firebaseFileRef.child(filename).putFile(it).await()
+                withContext(Dispatchers.Main){
+                    Toast.makeText(this@MerchandiseForm, "File uploaded.", Toast.LENGTH_LONG).show()
+                }
+            }
+
+        }catch (e: Exception){
+            withContext(Dispatchers.Main){
+                Toast.makeText(this@MerchandiseForm, e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     private val changeImage =
         registerForActivityResult(
@@ -66,9 +97,9 @@ class DropdownItems : AppCompatActivity() {
         }
 
     private fun checkForStoragePermission(){
-        var f1: Boolean = false
-        var f2: Boolean = false
-        var permissionsToRequest = mutableListOf<String>()
+        var f1 = false
+        var f2 = false
+        val permissionsToRequest = mutableListOf<String>()
         if(ActivityCompat.checkSelfPermission(this,
             android.Manifest.permission
             .WRITE_EXTERNAL_STORAGE)
@@ -120,7 +151,7 @@ class DropdownItems : AppCompatActivity() {
                         val titles: List<String> = items?.map { it.title } ?: emptyList()
                         spinnerItems.addAll(titles)
                         val adapter = ArrayAdapter(
-                            this@DropdownItems,
+                            this@MerchandiseForm,
                             android.R.layout.simple_spinner_item,
                             spinnerItems
                         )

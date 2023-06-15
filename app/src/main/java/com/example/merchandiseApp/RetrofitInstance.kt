@@ -1,4 +1,4 @@
-package com.example.merchandizecodedesk
+package com.example.merchandiseApp
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory

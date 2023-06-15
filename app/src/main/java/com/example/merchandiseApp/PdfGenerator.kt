@@ -1,9 +1,10 @@
-package com.example.merchandizecodedesk
+package com.example.merchandiseApp
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import com.itextpdf.text.Paragraph
 import com.itextpdf.text.pdf.PdfWriter
 import java.io.File
@@ -14,15 +15,20 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 object PdfGenerator {
+
+    private var generatedUri: Uri? = null
+    private var fileName: String = ""
+
     fun generatePdf(
         name: String,
         company: String,
         market: String,
         selectedImageUri: Uri?,
         context: Context
-    ) {
+    ){
         val mDoc = com.itextpdf.text.Document()
-        val fileName = company + market + getCurrentDate()
+        fileName = company +"-"+ market +"-"+ getCurrentDate()
+
         val data =
             "Submitted by: $name\nCompany: $company\nMarket: $market"
         val fileDir = context.getExternalFilesDir(null)
@@ -41,6 +47,16 @@ object PdfGenerator {
                     inputStream?.copyTo(outputStream)
                     inputStream?.close()
                     outputStream.close()
+
+                    val fileUri = FileProvider.getUriForFile(
+                        context,
+                        context.packageName + ".fileprovider",
+                        filePath
+                    )
+                    generatedUri = fileUri
+                    Log.d("PdfGenerator", "Context: $context")
+                    Log.d("PdfGenerator", "Selected Image URI: $selectedImageUri")
+
                 } catch (e: FileNotFoundException) {
                     Log.e("PdfGenerator", "FileNotFoundException: ${e.printStackTrace()}")
                 } catch (e: IOException) {
@@ -65,7 +81,7 @@ object PdfGenerator {
         } catch (e: FileNotFoundException) {
             Log.e("PdfGenerator", "FileNotFoundException ${e.printStackTrace()}")
         } catch (e: Exception) {
-            Log.e("PdfGenerator", "Other exception ${e.printStackTrace()}")
+            Log.e("PdfGenerator", "Other exception ${e.printStackTrace()}"+ e.message)
         }
     }
 
@@ -74,4 +90,13 @@ object PdfGenerator {
         val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.ITALY)
         return dateFormat.format(currentDate).toString()
     }
+
+    fun getGeneratedUri(): Uri?{
+        return generatedUri
+    }
+
+    fun getFileName(): String?{
+        return fileName
+    }
+
 }

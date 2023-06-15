@@ -1,4 +1,4 @@
-package com.example.merchandizecodedesk
+package com.example.merchandiseApp
 
 data class ToDoItem(
     val userId: Int,

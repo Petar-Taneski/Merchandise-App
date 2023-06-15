@@ -16,6 +16,24 @@
         android:theme="@style/Theme.MerchandiseApp"
         tools:targetApi="31">
         <activity
+            android:name=".pdfViewer.PdfDetails"
+            android:exported="false" />
+
+        <activity
+            android:name=".BrowseFiles"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.merchandiseApp.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
             android:name=".MainMenu"
             android:exported="false" />
         <activity
@@ -28,7 +46,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".DropdownItems"
+            android:name=".MerchandiseForm"
             android:exported="true" />
     </application>
 
